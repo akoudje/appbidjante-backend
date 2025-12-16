@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// -------------------------------------------------------
+/// GRANDE FAMILLE
+/// -------------------------------------------------------
+model GrandeFamille {
+  id      String    @id @default(uuid())
+  nom     String    @unique
+  lignees Lignée[]
+}
+
+/// -------------------------------------------------------
+/// LIGNÉE
+/// -------------------------------------------------------
+model Lignée {
+  id               String             @id @default(uuid())
+  nom              String             @unique
+  familleId        String
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  CotisationLignee CotisationLignee[]
+  famille          GrandeFamille      @relation(fields: [familleId], references: [id])
+  membres          Membre[]
+}
+
+/// -------------------------------------------------------
+/// MEMBRE
+/// -------------------------------------------------------
+model Membre {
+  id            String       @id @default(uuid())
+  nom           String
+  prenoms       String
+
+  email         String?
+  contact1      String?
+  contact2      String?
+
+  genre         String
+  dateNaissance DateTime?
+  photo         String?
+  categorieId   String?
+  createdAt     DateTime     @default(now())
+  ligneeId      String
+  updatedAt     DateTime?    @updatedAt
+  /// ⚠️ Nouveau : Statut du membre
+  /// ex: "Actif", "Décédé", "Exempté", "Sorti", etc.
+  statutMembre  String       @default("Actif")
+  cotisations   Cotisation[]
+  deces         Deces?
+  categorie     Categorie?   @relation(fields: [categorieId], references: [id])
+  lignee        Lignée      @relation(fields: [ligneeId], references: [id])
+
+  @@unique([nom, prenoms], name: "nom_prenoms_unique")
+}
+
+/// -------------------------------------------------------
+/// CATÉGORIE
+/// -------------------------------------------------------
+model Categorie {
+  id                        String    @id @default(uuid())
+  label                     String
+  generation                String
+  classe                    String
+  born_from                 Int?
+  born_to                   Int?
+  date_sortie_1er_guerrier  DateTime
+  date_sortie_2eme_guerrier DateTime?
+  description               String?
+  membres                   Membre[]
+}
+
+/// -------------------------------------------------------
+/// DÉCÈS
+/// -------------------------------------------------------
+model Deces {
+  id               String             @id @default(uuid())
+  membreId         String             @unique
+  dateDeces        DateTime
+  motif            String?
+  cotisations      Cotisation[]
+  CotisationLignee CotisationLignee[]
+  membre           Membre             @relation(fields: [membreId], references: [id])
+  enterrement      Enterrement?
+}
+
+/// -------------------------------------------------------
+/// COTISATION
+/// -------------------------------------------------------
+model Cotisation {
+  id               Int        @id @default(autoincrement())
+  membreId         String
+  date             DateTime
+  montant          Int
+  motif            String?
+  createdAt        DateTime   @default(now())
+  paidAt           DateTime?
+  /// Lien vers le décès qui a généré la cotisation
+  decesId          String?
+  /// Statut de la cotisation
+  /// ex : "Impayé", "Payé", "Partiel", "Annulé"
+  statutCotisation String     @default("Impayé")
+  deces            Deces?     @relation(fields: [decesId], references: [id])
+  membre           Membre     @relation(fields: [membreId], references: [id])
+  paiements        Paiement[]
+
+  @@unique([membreId, decesId], name: "cotisation_unique_par_deces")
+}
+
+/// -------------------------------------------------------
+/// PAIEMENT
+/// -------------------------------------------------------
+model Paiement {
+  id           Int        @id @default(autoincrement())
+  cotisationId Int
+  montant      Int
+  date         DateTime   @default(now())
+  mode         String?
+  createdAt    DateTime   @default(now())
+  cotisation   Cotisation @relation(fields: [cotisationId], references: [id])
+}
+
+/// -------------------------------------------------------
+/// ENTERREMENT
+/// -------------------------------------------------------
+model Enterrement {
+  id                   String    @id @default(uuid())
+  decesId              String    @unique
+  declareAuVillage     Boolean   @default(false)
+  funeraillesAuVillage Boolean   @default(false)
+  enterreAuVillage     Boolean   @default(false)
+  lieuEnterrement      String?
+  dateEnterrement      DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deces                Deces     @relation(fields: [decesId], references: [id])
+}
+
+model SettingCategory {
+  id       Int       @id @default(autoincrement())
+  name     String
+  code     String    @unique
+  settings Setting[]
+}
+
+model Setting {
+  id         Int             @id @default(autoincrement())
+  key        String          @unique
+  label      String
+  value      String?
+  type       String
+  meta       String?
+  categoryId Int
+  updatedAt  DateTime        @updatedAt
+  minRole    String?
+  visible    Boolean         @default(true)
+  category   SettingCategory @relation(fields: [categoryId], references: [id])
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String?  @unique
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  active    Boolean  @default(true)
+  password  String
+  updatedAt DateTime @updatedAt
+  username  String   @unique
+}
+
+model MenuGroup {
+  id      Int        @id @default(autoincrement())
+  name    String
+  code    String     @unique
+  order   Int        @default(0)
+  visible Boolean    @default(true)
+  items   MenuItem[]
+}
+
+model MenuItem {
+  id       Int        @id @default(autoincrement())
+  label    String
+  path     String?    @unique
+  icon     String?
+  order    Int        @default(0)
+  visible  Boolean    @default(true)
+  minRole  String     @default("user")
+  groupId  Int?
+  parentId Int?
+  group    MenuGroup? @relation(fields: [groupId], references: [id])
+  parent   MenuItem?  @relation("MenuItemToMenuItem", fields: [parentId], references: [id])
+  children MenuItem[] @relation("MenuItemToMenuItem")
+}
+
+model CotisationLignee {
+  id             Int              @id @default(autoincrement())
+  date           DateTime         @default(now())
+  montant        Int
+  motif          String?
+  statut         String           @default("Impayé")
+  decesId        String
+  ligneeId       String
+  createdAt      DateTime         @default(now())
+  paidAt         DateTime?
+  Deces          Deces            @relation(fields: [decesId], references: [id])
+  Lign_e         Lignée          @relation(fields: [ligneeId], references: [id])
+  PaiementLignee PaiementLignee[]
+
+  @@unique([decesId, ligneeId])
+}
+
+model PaiementLignee {
+  id               Int              @id @default(autoincrement())
+  cotisationId     Int
+  montant          Int
+  date             DateTime         @default(now())
+  mode             String?
+  createdAt        DateTime         @default(now())
+  CotisationLignee CotisationLignee @relation(fields: [cotisationId], references: [id])
+}
