@@ -17,6 +17,8 @@ import enterrementsRoutes from "./routes/enterrements.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
 import menuRoutes from "./routes/menu.routes.js";
 
+import communiqueRoutes from "./routes/communique.routes.js";
+
 import authRoutes from "./routes/auth.routes.js";
 import usersRoutes from "./routes/users.routes.js";
 
@@ -84,6 +86,7 @@ app.use("/api/enterrements", enterrementsRoutes);
 app.use("/api/usersmanagements", usersRoutes);
 app.use("/api/register", usersRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/communiques", communiqueRoutes);
 
 
 export default app;

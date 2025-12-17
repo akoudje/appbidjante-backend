@@ -33,11 +33,20 @@ export async function ensureAuth(req, res, next) {
 }
 
 // Pour protéger les routes admin
-export function requireRole(role) {
+export function requireRole(...roles) {
   return (req, res, next) => {
-    if (!req.user || req.user.role !== role) {
-      return res.status(403).json({ error: "Accès refusé" });
+    if (!req.user) {
+      return res.status(401).json({ error: "Non authentifié" });
     }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        error: "Accès refusé",
+        required: roles,
+        current: req.user.role,
+      });
+    }
+
     next();
   };
 }
