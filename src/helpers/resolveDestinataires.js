@@ -8,7 +8,7 @@ export default async function resolveDestinataires(communique) {
   if (cibleType === "ALL") {
     return prisma.membre.findMany({
       where: {
-        statutMembre: { in: ["Actif", "Actif Exempté", "Non actif"] },
+        statutMembre: { in: ["Actif", "Actif Exempté"] },
       },
     });
   }
@@ -36,7 +36,7 @@ export default async function resolveDestinataires(communique) {
     return prisma.membre.findMany({
       where: {
         categorieId: { in: cibleIds },
-        statutMembre: { in: ["Actif", "Actif Exempté", "Non actif"] },
+        statutMembre: { in: ["Actif", "Actif Exempté"] },
       },
     });
   }

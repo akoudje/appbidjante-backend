@@ -7,7 +7,7 @@ import prisma from "../prisma.js";
 // --------------------------------------------
 export async function getAllLignees(req, res) {
   try {
-    const list = await prisma.lignée.findMany({
+    const list = await prisma.lignee.findMany({
       include: {
         famille: true,
         membres: true
@@ -29,7 +29,7 @@ export async function getLignee(req, res) {
   try {
     const { id } = req.params;
 
-    const lignee = await prisma.lignée.findUnique({
+    const lignee = await prisma.lignee.findUnique({
       where: { id },
       include: {
         famille: true,
@@ -57,7 +57,7 @@ export async function getLigneesByFamille(req, res) {
       return res.status(400).json({ error: "familleId manquant." });
     }
 
-    const list = await prisma.lignée.findMany({
+    const list = await prisma.lignee.findMany({
       where: { familleId },
       orderBy: { nom: "asc" },
     });
@@ -84,7 +84,7 @@ export async function createLignee(req, res) {
       return res.status(400).json({ error: "nom et familleId sont obligatoires" });
     }
 
-    const lignee = await prisma.lignée.create({
+    const lignee = await prisma.lignee.create({
       data: { nom, familleId }
     });
 
@@ -103,7 +103,7 @@ export async function updateLignee(req, res) {
     const { id } = req.params;
     const { nom, familleId } = req.body;
 
-    const lignee = await prisma.lignée.update({
+    const lignee = await prisma.lignee.update({
       where: { id },
       data: {
         nom,
@@ -136,7 +136,7 @@ export async function deleteLignee(req, res) {
       });
     }
 
-    await prisma.lignée.delete({ where: { id } });
+    await prisma.lignee.delete({ where: { id } });
 
     res.json({ message: "Lignée supprimée" });
   } catch (err) {

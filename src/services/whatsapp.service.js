@@ -2,23 +2,18 @@
  * Service WhatsApp
  * (Mock – prêt pour WhatsApp Business API / Twilio)
  */
-export async function sendWhatsApp({ to, message }) {
+async function send(dest, communique) {
   try {
     console.log("💬 WHATSAPP ENVOYÉ");
-    console.log("→ Numéro :", to);
-    console.log("→ Message :", message);
+    console.log("→ Numéro :", dest.contact1);
+    console.log("→ Message :", communique.message || communique.contenu);
 
     await new Promise((r) => setTimeout(r, 300));
 
-    return {
-      success: true,
-      providerId: "WHATSAPP_MOCK_001",
-    };
+    return { success: true, providerId: "WHATSAPP_MOCK_001" };
   } catch (error) {
-    return {
-      success: false,
-      error: error.message,
-    };
+    return { success: false, error: error.message };
   }
 }
-export default { sendWhatsApp };
+
+export default { send };

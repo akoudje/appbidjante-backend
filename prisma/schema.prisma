@@ -15,6 +15,7 @@ model GrandeFamille {
   id      String   @id @default(uuid())
   nom     String   @unique
   lignees Lignee[]
+
 }
 
 /// -------------------------------------------------------
@@ -33,12 +34,9 @@ model Lignee {
   membres      Membre[]
   cotisations  CotisationLignee[]
 
-  // Chef actuel
   chefLignee Membre? @relation("ChefLigneeActuel", fields: [chefLigneeId], references: [id])
 
-  // Historique des chefs
   historiques  HistoriqueChefLignee[]
-
 }
 
 /// -------------------------------------------------------
@@ -47,8 +45,8 @@ model Lignee {
 
 model HistoriqueChefLignee {
   id        String   @id @default(uuid())
-  ligneeId  String
-  membreId  String
+  ligneeId  String   
+  membreId  String   
   dateDebut DateTime @default(now())
   dateFin   DateTime?
   createdAt DateTime @default(now())
@@ -59,6 +57,7 @@ model HistoriqueChefLignee {
   @@index([ligneeId])
   @@index([membreId])
 }
+
 
 /// -------------------------------------------------------
 /// MEMBRE
@@ -319,8 +318,31 @@ model Communique {
   updatedAt       DateTime @updatedAt
 
   diffusions      DiffusionHistorique[]
+  batches         DiffusionBatch[]      // 👈 NOUVEAU
 
   @@index([datePublication])
+}
+
+
+model DiffusionBatch {
+  id             String   @id @default(uuid())
+
+  communiqueId   String
+  communique     Communique @relation(fields: [communiqueId], references: [id], onDelete: Cascade)
+
+  type           DiffusionType   // PUBLICATION | REDIFFUSION
+
+  totalCibles    Int
+  totalEnvoyes   Int
+  totalEchecs    Int
+
+  startedAt      DateTime @default(now())
+  finishedAt     DateTime?
+
+  diffusions     DiffusionHistorique[]
+
+  @@index([communiqueId])
+  @@index([type])
 }
 
 
@@ -330,6 +352,9 @@ model DiffusionHistorique {
   communiqueId   String
   communique     Communique @relation(fields: [communiqueId], references: [id], onDelete: Cascade)
 
+  batchId        String
+  batch          DiffusionBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
   canal          CanalDiffusion
   destinataire   String
   statut         DiffusionStatut
@@ -338,9 +363,13 @@ model DiffusionHistorique {
   sentAt         DateTime @default(now())
 
   @@index([communiqueId])
+  @@index([batchId])
   @@index([canal])
   @@index([statut])
 }
+
+
+
 
 /// -------------------------------------------------------
 /// ENUMS – COMMUNICATIONS
@@ -381,3 +410,9 @@ enum DiffusionStatut {
   ENVOYE
   ECHEC
 }
+
+enum DiffusionType {
+  PUBLICATION
+  REDIFFUSION
+}
+
