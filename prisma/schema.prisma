@@ -3,105 +3,72 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
-
-/// -------------------------------------------------------
-/// GRANDE FAMILLE
-/// -------------------------------------------------------
 
 model GrandeFamille {
   id      String   @id @default(uuid())
   nom     String   @unique
   lignees Lignee[]
-
 }
-
-/// -------------------------------------------------------
-/// LIGNEE (chef + historique)
-/// -------------------------------------------------------
 
 model Lignee {
-  id           String   @id @default(uuid())
-  nom          String   @unique
-  familleId    String
-  chefLigneeId String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  famille      GrandeFamille @relation(fields: [familleId], references: [id])
-  membres      Membre[]
-  cotisations  CotisationLignee[]
-
-  chefLignee Membre? @relation("ChefLigneeActuel", fields: [chefLigneeId], references: [id])
-
-  historiques  HistoriqueChefLignee[]
+  id                                 String                 @id @default(uuid())
+  nom                                String                 @unique
+  familleId                          String
+  createdAt                          DateTime               @default(now())
+  updatedAt                          DateTime               @updatedAt
+  chefLigneeId                       String?
+  cotisations                        CotisationLignee[]
+  HistoriqueChefLignee               HistoriqueChefLignee[]
+  Membre_Lignee_chefLigneeIdToMembre Membre?                @relation("Lignee_chefLigneeIdToMembre", fields: [chefLigneeId], references: [id])
+  famille                            GrandeFamille          @relation(fields: [familleId], references: [id], map: "Lign├⌐e_familleId_fkey")
+  membres                            Membre[]
 }
 
-/// -------------------------------------------------------
-/// HISTORIQUE CHEF DE LIGNEE
-/// -------------------------------------------------------
-
 model HistoriqueChefLignee {
-  id        String   @id @default(uuid())
-  ligneeId  String   
-  membreId  String   
-  dateDebut DateTime @default(now())
+  id        String    @id @default(uuid())
+  ligneeId  String
+  membreId  String
+  dateDebut DateTime  @default(now())
   dateFin   DateTime?
-  createdAt DateTime @default(now())
-
-  lignee    Lignee @relation(fields: [ligneeId], references: [id])
-  membre    Membre @relation(fields: [membreId], references: [id])
+  createdAt DateTime  @default(now())
+  Lignee    Lignee    @relation(fields: [ligneeId], references: [id])
+  Membre    Membre    @relation(fields: [membreId], references: [id])
 
   @@index([ligneeId])
   @@index([membreId])
 }
 
-
-/// -------------------------------------------------------
-/// MEMBRE
-/// -------------------------------------------------------
-
 model Membre {
-  id            String   @id @default(uuid())
-  nom           String
-  prenoms       String
-  genre         String
-  dateNaissance DateTime?
-  photo         String?
-  categorieId   String?
-  ligneeId      String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime? @updatedAt
-
-  statutMembre  String   @default("Actif")
-  contact1      String?
-  contact2      String?
-  email         String?
-
-  lignee        Lignee   @relation(fields: [ligneeId], references: [id])
-  categorie     Categorie? @relation(fields: [categorieId], references: [id])
-
-  cotisations   Cotisation[]
-  deces         Deces?
-
-  // Chef ACTUEL d’une lignée (0 ou 1)
-  chefferiesActuelles Lignee[] @relation("ChefLigneeActuel")
-
-
-  // Historique des chefferies
-  chefferies    HistoriqueChefLignee[]
+  id                                 String                 @id @default(uuid())
+  nom                                String
+  prenoms                            String
+  genre                              String
+  dateNaissance                      DateTime?
+  photo                              String?
+  categorieId                        String?
+  createdAt                          DateTime               @default(now())
+  ligneeId                           String
+  updatedAt                          DateTime?              @updatedAt
+  statutMembre                       String                 @default("Actif")
+  contact1                           String?
+  contact2                           String?
+  email                              String?
+  cotisations                        Cotisation[]
+  deces                              Deces?
+  HistoriqueChefLignee               HistoriqueChefLignee[]
+  Lignee_Lignee_chefLigneeIdToMembre Lignee[]               @relation("Lignee_chefLigneeIdToMembre")
+  categorie                          Categorie?             @relation(fields: [categorieId], references: [id])
+  lignee                             Lignee                 @relation(fields: [ligneeId], references: [id])
 
   @@unique([nom, prenoms], name: "nom_prenoms_unique")
 }
 
-/// -------------------------------------------------------
-/// CATEGORIE
-/// -------------------------------------------------------
-
 model Categorie {
-  id                        String   @id @default(uuid())
+  id                        String    @id @default(uuid())
   label                     String
   generation                String
   classe                    String
@@ -110,23 +77,17 @@ model Categorie {
   date_sortie_1er_guerrier  DateTime
   date_sortie_2eme_guerrier DateTime?
   description               String?
-
   membres                   Membre[]
 }
 
-/// -------------------------------------------------------
-/// DECES
-/// -------------------------------------------------------
-
 model Deces {
-  id                String   @id @default(uuid())
-  membreId          String   @unique
+  id                String             @id @default(uuid())
+  membreId          String             @unique
   dateDeces         DateTime
   motif             String?
-
-  membre            Membre   @relation(fields: [membreId], references: [id])
   cotisations       Cotisation[]
   cotisationsLignee CotisationLignee[]
+  membre            Membre             @relation(fields: [membreId], references: [id])
   enterrement       Enterrement?
 }
 
@@ -146,85 +107,59 @@ model Enterrement {
   deces                Deces     @relation(fields: [decesId], references: [id])
 }
 
-/// -------------------------------------------------------
-/// COTISATION MEMBRE
-/// -------------------------------------------------------
-
 model Cotisation {
-  id               Int      @id @default(autoincrement())
+  id               Int        @id @default(autoincrement())
   membreId         String
-  decesId          String?
-
   date             DateTime
   montant          Int
   motif            String?
-  statutCotisation String   @default("Impaye")
-  createdAt        DateTime @default(now())
+  createdAt        DateTime   @default(now())
   paidAt           DateTime?
-
-  membre           Membre   @relation(fields: [membreId], references: [id])
-  deces            Deces?   @relation(fields: [decesId], references: [id])
+  decesId          String?
+  statutCotisation String     @default("Impaye")
+  deces            Deces?     @relation(fields: [decesId], references: [id])
+  membre           Membre     @relation(fields: [membreId], references: [id])
   paiements        Paiement[]
 
   @@unique([membreId, decesId], name: "cotisation_unique_par_deces")
 }
 
-/// -------------------------------------------------------
-/// PAIEMENT MEMBRE
-/// -------------------------------------------------------
-
 model Paiement {
-  id           Int      @id @default(autoincrement())
+  id           Int        @id @default(autoincrement())
   cotisationId Int
   montant      Int
-  date         DateTime @default(now())
+  date         DateTime   @default(now())
   mode         String?
-  createdAt    DateTime @default(now())
-
+  createdAt    DateTime   @default(now())
   cotisation   Cotisation @relation(fields: [cotisationId], references: [id])
 }
 
-/// -------------------------------------------------------
-/// COTISATION PAR LIGNEE
-/// -------------------------------------------------------
-
 model CotisationLignee {
-  id         Int      @id @default(autoincrement())
-  decesId    String
-  ligneeId   String
-
-  date       DateTime @default(now())
-  montant    Int
-  motif      String?
-  statut     String   @default("Impaye")
-  createdAt  DateTime @default(now())
-  paidAt     DateTime?
-
-  deces      Deces    @relation(fields: [decesId], references: [id])
-  lignee     Lignee   @relation(fields: [ligneeId], references: [id])
-  paiements  PaiementLignee[]
+  id        Int              @id @default(autoincrement())
+  date      DateTime         @default(now())
+  montant   Int
+  motif     String?
+  statut    String           @default("Impaye")
+  decesId   String
+  ligneeId  String
+  createdAt DateTime         @default(now())
+  paidAt    DateTime?
+  deces     Deces            @relation(fields: [decesId], references: [id])
+  lignee    Lignee           @relation(fields: [ligneeId], references: [id])
+  paiements PaiementLignee[]
 
   @@unique([decesId, ligneeId])
 }
 
-/// -------------------------------------------------------
-/// PAIEMENT LIGNEE
-/// -------------------------------------------------------
-
 model PaiementLignee {
-  id               Int      @id @default(autoincrement())
+  id               Int              @id @default(autoincrement())
   cotisationId     Int
   montant          Int
-  date             DateTime @default(now())
+  date             DateTime         @default(now())
   mode             String?
-  createdAt        DateTime @default(now())
-
+  createdAt        DateTime         @default(now())
   cotisationLignee CotisationLignee @relation(fields: [cotisationId], references: [id])
 }
-
-/// -------------------------------------------------------
-/// SETTINGS
-/// -------------------------------------------------------
 
 model SettingCategory {
   id       Int       @id @default(autoincrement())
@@ -244,25 +179,20 @@ model Setting {
   updatedAt  DateTime        @updatedAt
   minRole    String?
   visible    Boolean         @default(true)
-
   category   SettingCategory @relation(fields: [categoryId], references: [id])
 }
 
-/// -------------------------------------------------------
-/// USER & MENU
-/// -------------------------------------------------------
-
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String?  @unique
-  username  String   @unique
-  password  String
-  role      String   @default("user")
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  communiques Communique[]
+  id            Int          @id @default(autoincrement())
+  email         String?      @unique
+  role          String       @default("user")
+  createdAt     DateTime     @default(now())
+  active        Boolean      @default(true)
+  password      String
+  updatedAt     DateTime     @updatedAt
+  username      String       @unique
+  amendesCreees Amende[]
+  Communique    Communique[]
 }
 
 model MenuGroup {
@@ -284,96 +214,119 @@ model MenuItem {
   minRole  String     @default("user")
   groupId  Int?
   parentId Int?
-
   group    MenuGroup? @relation(fields: [groupId], references: [id])
   parent   MenuItem?  @relation("MenuItemToMenuItem", fields: [parentId], references: [id])
   children MenuItem[] @relation("MenuItemToMenuItem")
 }
 
-
-/// -------------------------------------------------------
-/// COMMUNICATIONS
-/// -------------------------------------------------------
-
 model Communique {
-  id              String   @id @default(uuid())
-
-  titre           String
-  contenu         String
-
-  type            CommuniqueType
-  statut          CommuniqueStatut
-
-  canaux          String[]
-  cibleType       CibleType
-  cibleIds        String[]
-
-  datePublication DateTime?
-  dateArchivage   DateTime?
-
-  createdById     Int
-  createdBy       User     @relation(fields: [createdById], references: [id])
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  diffusions      DiffusionHistorique[]
-  batches         DiffusionBatch[]      // 👈 NOUVEAU
+  id                  String                @id @default(uuid())
+  titre               String
+  contenu             String
+  type                CommuniqueType
+  statut              CommuniqueStatut
+  canaux              String[]
+  cibleType           CibleType
+  cibleIds            String[]
+  datePublication     DateTime?
+  dateArchivage       DateTime?
+  createdById         Int
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  User                User                  @relation(fields: [createdById], references: [id])
+  DiffusionBatch      DiffusionBatch[]
+  DiffusionHistorique DiffusionHistorique[]
 
   @@index([datePublication])
 }
 
+model DiffusionHistorique {
+  id             String          @id @default(uuid())
+  communiqueId   String
+  canal          CanalDiffusion
+  destinataire   String
+  statut         DiffusionStatut
+  messageRetour  String?
+  sentAt         DateTime        @default(now())
+  batchId        String
+
+  // NOUVEAUX CHAMPS POUR LES SMS ORANGE
+  trackingUrl    String?         // URL de suivi Orange
+  messageId      String?         // ID unique du message
+
+  DiffusionBatch DiffusionBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  Communique     Communique      @relation(fields: [communiqueId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
+  @@index([canal])
+  @@index([communiqueId])
+  @@index([statut])
+}
 
 model DiffusionBatch {
-  id             String   @id @default(uuid())
-
-  communiqueId   String
-  communique     Communique @relation(fields: [communiqueId], references: [id], onDelete: Cascade)
-
-  type           DiffusionType   // PUBLICATION | REDIFFUSION
-
-  totalCibles    Int
-  totalEnvoyes   Int
-  totalEchecs    Int
-
-  startedAt      DateTime @default(now())
-  finishedAt     DateTime?
-
-  diffusions     DiffusionHistorique[]
+  id                  String                @id
+  communiqueId        String
+  type                DiffusionType
+  totalCibles         Int
+  totalEnvoyes        Int
+  totalEchecs         Int
+  startedAt           DateTime              @default(now())
+  finishedAt          DateTime?
+  Communique          Communique            @relation(fields: [communiqueId], references: [id], onDelete: Cascade)
+  DiffusionHistorique DiffusionHistorique[]
 
   @@index([communiqueId])
   @@index([type])
 }
 
-
-model DiffusionHistorique {
-  id             String   @id @default(uuid())
-
-  communiqueId   String
-  communique     Communique @relation(fields: [communiqueId], references: [id], onDelete: Cascade)
-
-  batchId        String
-  batch          DiffusionBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
-
-  canal          CanalDiffusion
-  destinataire   String
-  statut         DiffusionStatut
-  messageRetour  String?
-
-  sentAt         DateTime @default(now())
-
-  @@index([communiqueId])
-  @@index([batchId])
-  @@index([canal])
-  @@index([statut])
+model Amende {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reference    String           @unique
+  type         amende_type
+  motif        String
+  montant      Int?
+  description  String
+  dateDecision DateTime         @default(now()) @db.Timestamp(6)
+  dateLimite   DateTime?        @db.Timestamp(6)
+  statut       amende_statut    @default(EN_ATTENTE)
+  createdById  Int
+  createdAt    DateTime         @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime         @default(now()) @updatedAt @db.Timestamp(6)
+  createdBy    User             @relation(fields: [createdById], references: [id], onUpdate: NoAction, map: "Amende_createdBy_fkey")
+  cibles       AmendeCible[]
+  paiements    AmendePaiement[]
+  relances     AmendeRelance[]
 }
 
+model AmendeCible {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type          amende_cible_type
+  cibleId       String
+  cibleNom      String
+  ciblePrenom   String
+  amendeId      String            @db.Uuid
+  estTransferee Boolean           @default(false)
+  amende        Amende            @relation(fields: [amendeId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "AmendeCible_amende_fkey")
+}
 
+model AmendePaiement {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  montant      Int
+  datePaiement DateTime @default(now()) @db.Timestamp(6)
+  mode         String?
+  amendeId     String   @db.Uuid
+  reference    String?
+  amende       Amende   @relation(fields: [amendeId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "AmendePaiement_amende_fkey")
+}
 
-
-/// -------------------------------------------------------
-/// ENUMS – COMMUNICATIONS
-/// -------------------------------------------------------
+model AmendeRelance {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  canal     String
+  message   String?
+  dateEnvoi DateTime @default(now()) @db.Timestamp(6)
+  amendeId  String   @db.Uuid
+  amende    Amende   @relation(fields: [amendeId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "AmendeRelance_amende_fkey")
+}
 
 enum CommuniqueType {
   GRIOT
@@ -416,3 +369,24 @@ enum DiffusionType {
   REDIFFUSION
 }
 
+enum amende_cible_type {
+  INDIVIDU
+  LIGNEE
+  CATEGORIE
+  GENERATION
+}
+
+enum amende_statut {
+  EN_ATTENTE
+  PARTIEL
+  PAYEE
+  TRANSFEREE
+  IMPAYEE
+}
+
+enum amende_type {
+  PECUNIAIRE
+  MATERIELLE
+  DISCIPLINAIRE
+  MIXTE
+}

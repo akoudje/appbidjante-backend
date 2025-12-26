@@ -3,11 +3,54 @@
 import prisma from "../prisma.js";
 
 // 📌 Récupérer tous les membres
+// src/controllers/membres.controller.js
+
 export async function getAllMembres(req, res) {
   try {
+    const { forAmendes, light } = req.query;
+    
+    if (forAmendes === "true" || light === "true") {
+      // Version légère pour les selects
+      const membres = await prisma.membre.findMany({
+        where: {
+          statutMembre: { not: "Décédé" }
+        },
+        select: {
+          id: true,
+          nom: true,
+          prenoms: true,
+          statutMembre: true,
+          categorieId: true,
+          ligneeId: true,
+          categorie: {
+            select: {
+              id: true,
+              label: true,
+              generation: true,
+            }
+          },
+          lignee: {
+            select: {
+              id: true,
+              nom: true,
+              famille: {
+                select: {
+                  nom: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: { nom: "asc" },
+      });
+      
+      return res.json(membres);
+    }
+    
+    // Version complète (existant)
     const membres = await prisma.membre.findMany({
       where: {
-        statutMembre: { not: "Décédé" }   // 👈 CACHE LES DÉCÉDÉS
+        statutMembre: { not: "Décédé" }
       },
       include: {
         lignee: { include: { famille: true } },

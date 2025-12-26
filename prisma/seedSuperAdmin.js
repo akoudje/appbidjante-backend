@@ -8,7 +8,7 @@ async function main() {
   console.log('👑 Création du SuperAdmin...');
 
   const superAdminData = {
-    username: 'superadmin',
+    username: 'superadminbidjante',
     email: 'superadmin@bidjante.com',
     password: await bcrypt.hash('admin123', 10),
     role: 'superadmin',

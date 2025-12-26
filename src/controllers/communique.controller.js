@@ -9,19 +9,41 @@ import emailService from "../services/email.service.js";
 /**
  * GET /api/communiques
  */
+/**
+ * GET /api/communiques
+ */
 export async function getAllCommuniques(req, res) {
   try {
-    const { statut, type } = req.query;
+    const { statut, type, canal, search } = req.query;
 
     const where = {};
-    if (statut) where.statut = statut;
-    if (type) where.type = type;
+
+    if (statut && statut.trim() !== "") {
+      where.statut = statut.toUpperCase();
+    }
+
+    if (type && type.trim() !== "") {
+      where.type = type.toUpperCase();
+    }
+
+    if (canal && canal.trim() !== "") {
+      where.canaux = { has: canal.toUpperCase() };
+    }
+
+    if (search && search.trim() !== "") {
+      where.OR = [
+        { titre: { contains: search, mode: "insensitive" } },
+        { contenu: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    console.log("📢 GET /communiques → where =", where);
 
     const communiques = await prisma.communique.findMany({
       where,
       orderBy: { createdAt: "desc" },
       include: {
-        createdBy: {
+        User: {
           select: { id: true, username: true },
         },
       },
@@ -29,10 +51,14 @@ export async function getAllCommuniques(req, res) {
 
     res.json(communiques);
   } catch (err) {
-    console.error("ERREUR GET COMMUNIQUES:", err);
-    res.status(500).json({ error: "Erreur chargement communiqués" });
+    console.error("❌ ERREUR GET COMMUNIQUES :", err);
+    res.status(500).json({
+      error: "Erreur chargement communiqués",
+    });
   }
 }
+
+
 
 /**
  * GET /api/communiques/:id
@@ -57,17 +83,57 @@ export async function getCommuniqueById(req, res) {
  * POST /api/communiques
  */
 export async function createCommunique(req, res) {
-  const data = req.body;
+  try {
+    const body = req.body;
 
-  const communique = await prisma.communique.create({
-    data: {
-      ...data,
+    /* =========================
+       HELPERS DE NORMALISATION
+    ========================== */
+
+    const normalizeArray = (value) => {
+      if (!value) return [];
+      if (Array.isArray(value)) return value;
+      if (typeof value === "string") {
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    };
+
+    /* =========================
+       ⚠️ WHITELIST STRICT PRISMA
+       (AUCUN champ en plus)
+    ========================== */
+
+    const data = {
+      titre: body.titre,
+      contenu: body.contenu,
+      type: body.type,
+
+      canaux: normalizeArray(body.canaux),
+
+      cibleType: body.cibleType,
+      cibleIds: normalizeArray(body.cibleIds),
+
       statut: "BROUILLON",
       createdById: req.user.id,
-    },
-  });
+    };
 
-  res.status(201).json(communique);
+    const communique = await prisma.communique.create({
+      data,
+    });
+
+    return res.status(201).json(communique);
+  } catch (err) {
+    console.error("ERREUR CREATE COMMUNIQUE :", err);
+    return res.status(500).json({
+      error: "Erreur lors de la création du communiqué",
+    });
+  }
 }
 
 /**
@@ -166,7 +232,6 @@ export async function archiverCommunique(req, res) {
   res.json(updated);
 }
 
-
 /**
  * POST /api/communiques/:id/rediffuser
  * 🔁 Rediffusion SAFE (ne bloque jamais sur 0 destinataire)
@@ -221,8 +286,6 @@ export async function rediffuserCommunique(req, res) {
   }
 }
 
-
-
 /**
  * GET /api/communiques/:id/diffusions
  */
@@ -233,7 +296,7 @@ export async function getDiffusionHistorique(req, res) {
     const communique = await prisma.communique.findUnique({
       where: { id },
       include: {
-        diffusions: {
+        DiffusionHistorique: {
           orderBy: {
             sentAt: "desc",
           },
@@ -247,15 +310,14 @@ export async function getDiffusionHistorique(req, res) {
       });
     }
 
-    return res.json(communique.diffusions);
+    return res.json(communique.DiffusionHistorique);
   } catch (err) {
-    console.error("Erreur récupération diffusions :", err);
+    console.error("❌ Erreur récupération diffusions :", err);
     return res.status(500).json({
       error: "Erreur lors du chargement de l’historique de diffusion",
     });
   }
 }
-
 
 /**
  * GET /api/communiques/:id/preview
